@@ -1,3 +1,4 @@
+先https://www.msys2.org/安装mingw32-make命令和gcc编译器
 # Socket 聊天系统
 
 一个基于 Socket 的多用户聊天系统，支持实时消息传递和用户状态管理。
