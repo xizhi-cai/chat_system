@@ -18,21 +18,12 @@
 - Make 工具
 
 ## 编译和运行
+1.mkdir obj
+2.mkdir bin
+3.mingw32-make
+4.mingw32-make run-server（服务器）
+5.用户端两种：mingw32-make run-client           运行bin/test_client.exe
 
-1. 编译项目：
-```bash
-mingw32-make
-```
-
-2. 运行服务器：
-```bash
-mingw32-make run-server
-```
-
-3. 运行客户端：
-```bash
-mingw32-make run-client
-```
 
 ## 使用说明
 
