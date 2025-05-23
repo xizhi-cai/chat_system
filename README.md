@@ -47,16 +47,8 @@
 获取项目代码
 可以用 Git 克隆您的仓库，或直接拷贝整个项目文件夹到B电脑。
 修改客户端代码，连接服务器IP
-打开 src/test_client.c，找到如下代码（大约26行）：
-     server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");  // 本地服务器
-把 "127.0.0.1" 改成A电脑的IP，比如：
-     server_addr.sin_addr.s_addr = inet_addr("192.168.1.100");
-保存文件。
-编译并运行客户端
-在B电脑上，进入项目目录，执行：
- mingw32-make
-     mingw32-make run-client
-按提示输入昵称，即可进入聊天室
+test_client改成：文件中test_client2.txt(加自己公网ip）
+
 ## 项目结构
 
 ```
