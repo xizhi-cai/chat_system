@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Socket通信软件</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>Socket通信软件</h1>
+            <div class="status" id="status">离线</div>
+        </header>
+        
+        <div class="main-content">
+            <div class="sidebar">
+                <div class="user-info">
+                    <div class="user-avatar">👤</div>
+                    <div class="user-name" id="username">未登录</div>
+                </div>
+                
+                <div class="online-users">
+                    <h3>在线用户</h3>
+                    <ul id="userList"></ul>
+                </div>
+            </div>
+            
+            <div class="chat-area">
+                <div class="messages" id="messages"></div>
+                
+                <div class="input-area">
+                    <div class="login-form" id="loginForm">
+                        <input type="text" id="nameInput" placeholder="请输入您的昵称" maxlength="20">
+                        <button onclick="connect()">连接服务器</button>
+                    </div>
+                    
+                    <div class="chat-form" id="chatForm" style="display: none;">
+                        <input type="text" id="messageInput" placeholder="输入消息..." maxlength="500">
+                        <button onclick="sendMessage()">发送</button>
+                        <button onclick="disconnect()" class="disconnect-btn">断开连接</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
