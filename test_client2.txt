@@ -1,0 +1,215 @@
+
+#include "../include/chat.h"
+
+// 服务器配置
+#define SERVER_IP "120.46.90.109"  // 修改为您的公网服务器IP
+#define SERVER_PORT 8888
+
+int main() {
+    // 设置控制台代码页为 UTF-8
+    SetConsoleOutputCP(65001);
+    
+    printf("=== Socket通信客户端 ===\n");
+    printf("版本: 1.0\n");
+    printf("正在连接服务器...\n\n");
+    
+    // 初始化Winsock
+    init_winsock();
+    
+    // 创建客户端Socket
+    SOCKET client_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if (client_socket == INVALID_SOCKET) {
+        printf("创建Socket失败: %d\n", WSAGetLastError());
+        cleanup_winsock();
+        return 1;
+    }
+    
+    // 配置服务器地址
+    struct sockaddr_in server_addr;
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_addr.s_addr = inet_addr(SERVER_IP);  // 使用配置的服务器IP
+    server_addr.sin_port = htons(SERVER_PORT);
+    
+    // 连接到服务器
+    printf("正在连接到 %s:%d...\n", SERVER_IP, SERVER_PORT);
+    if (connect(client_socket, (struct sockaddr*)&server_addr, sizeof(server_addr)) == SOCKET_ERROR) {
+        printf("❌ 连接服务器失败: %d\n", WSAGetLastError());
+        printf("请确保:\n");
+        printf("1. 服务器程序正在运行\n");
+        printf("2. 防火墙没有阻止连接\n");
+        printf("3. 端口 %d 没有被其他程序占用\n", SERVER_PORT);
+        closesocket(client_socket);
+        cleanup_winsock();
+        system("pause");
+        return 1;
+    }
+    
+    printf("✓ 成功连接到服务器！\n\n");
+    
+    // 获取用户昵称
+    char username[NAME_SIZE];
+    printf("请输入您的昵称 (最多%d个字符): ", NAME_SIZE - 1);
+    fflush(stdout);
+    
+    if (fgets(username, sizeof(username), stdin) == NULL) {
+        printf("读取昵称失败\n");
+        closesocket(client_socket);
+        cleanup_winsock();
+        return 1;
+    }
+    
+    // 移除换行符
+    username[strcspn(username, "\n")] = '\0';
+    
+    // 检查昵称是否为空
+    if (strlen(username) == 0) {
+        printf("昵称不能为空，使用默认昵称: 匿名用户\n");
+        strcpy(username, "匿名用户");
+    }
+    
+    // 发送登录消息
+    Message login_msg;
+    memset(&login_msg, 0, sizeof(login_msg));
+    login_msg.type = MSG_LOGIN;
+    strncpy(login_msg.sender, username, NAME_SIZE - 1);
+    strncpy(login_msg.content, "用户登录", BUFFER_SIZE - 1);
+    strncpy(login_msg.timestamp, get_current_time(), 31);
+    
+    if (send(client_socket, (char*)&login_msg, sizeof(Message), 0) == SOCKET_ERROR) {
+        printf("发送登录消息失败: %d\n", WSAGetLastError());
+        closesocket(client_socket);
+        cleanup_winsock();
+        return 1;
+    }
+    
+    printf("✓ 登录成功！欢迎 [%s]\n", username);
+    printf("\n=== 聊天室使用说明 ===\n");
+    printf("• 直接输入消息并按回车发送\n");
+    printf("• 输入 'quit' 或 'exit' 退出程序\n");
+    printf("• 输入 'help' 查看帮助\n");
+    printf("========================\n\n");
+    
+    // 创建接收消息的线程
+    HANDLE recv_thread = CreateThread(NULL, 0, receive_messages, (LPVOID)client_socket, 0, NULL);
+    if (recv_thread == NULL) {
+        printf("创建接收线程失败\n");
+        closesocket(client_socket);
+        cleanup_winsock();
+        return 1;
+    }
+    
+    // 主循环 - 发送消息
+    Message msg;
+    memset(&msg, 0, sizeof(msg));
+    msg.type = MSG_CHAT;
+    strncpy(msg.sender, username, NAME_SIZE - 1);
+    
+    char input_buffer[BUFFER_SIZE];
+    
+    while (1) {
+        printf("%s> ", username);
+        fflush(stdout);
+        
+        if (fgets(input_buffer, sizeof(input_buffer), stdin) == NULL) {
+            printf("\n读取输入失败，退出程序\n");
+            break;
+        }
+        
+        // 移除换行符
+        input_buffer[strcspn(input_buffer, "\n")] = '\0';
+        
+        // 检查退出命令
+        if (strcmp(input_buffer, "quit") == 0 || strcmp(input_buffer, "exit") == 0) {
+            printf("正在退出...\n");
+            msg.type = MSG_LOGOUT;
+            strncpy(msg.content, "用户主动退出", BUFFER_SIZE - 1);
+            send(client_socket, (char*)&msg, sizeof(Message), 0);
+            break;
+        }
+        
+        // 检查帮助命令
+        if (strcmp(input_buffer, "help") == 0) {
+            printf("\n=== 帮助信息 ===\n");
+            printf("quit/exit - 退出程序\n");
+            printf("help      - 显示此帮助\n");
+            printf("其他输入  - 发送聊天消息\n");
+            printf("===============\n\n");
+            continue;
+        }
+        
+        // 检查是否为空消息
+        if (strlen(input_buffer) == 0) {
+            continue;
+        }
+        
+        // 发送聊天消息
+        msg.type = MSG_CHAT;
+        strncpy(msg.content, input_buffer, BUFFER_SIZE - 1);
+        strncpy(msg.timestamp, get_current_time(), 31);
+        
+        if (send(client_socket, (char*)&msg, sizeof(Message), 0) == SOCKET_ERROR) {
+            printf("❌ 发送消息失败: %d\n", WSAGetLastError());
+            printf("与服务器的连接可能已断开\n");
+            break;
+        }
+    }
+    
+    // 等待接收线程结束
+    printf("等待接收线程结束...\n");
+    WaitForSingleObject(recv_thread, 3000);  // 等待3秒
+    CloseHandle(recv_thread);
+    
+    // 清理资源
+    closesocket(client_socket);
+    cleanup_winsock();
+    
+    printf("✓ 已断开连接，再见！\n");
+    system("pause");
+    return 0;
+}
+
+DWORD WINAPI receive_messages(LPVOID client_socket) {
+    SOCKET sock = (SOCKET)client_socket;
+    Message msg;
+    
+    printf("✓ 消息接收线程启动\n");
+    
+    while (1) {
+        int bytes_received = recv(sock, (char*)&msg, sizeof(Message), 0);
+        if (bytes_received <= 0) {
+            if (bytes_received == 0) {
+                printf("\n📢 服务器关闭了连接\n");
+            } else {
+                printf("\n❌ 接收消息失败: %d\n", WSAGetLastError());
+            }
+            break;
+        }
+        
+        // 处理不同类型的消息
+        switch (msg.type) {
+            case MSG_CHAT:
+                if (strcmp(msg.sender, "系统") == 0) {
+                    printf("\n📢 [系统消息] %s\n", msg.content);
+                } else {
+                    printf("\n💬 [%s] %s: %s\n", msg.timestamp, msg.sender, msg.content);
+                }
+                break;
+                
+            case MSG_USER_LIST:
+                printf("\n👥 在线用户: %s\n", msg.content);
+                break;
+                
+            default:
+                printf("\n❓ 收到未知类型消息\n");
+                break;
+        }
+        
+        // 重新显示输入提示符 (因为无法获取用户名，使用简单提示符)
+        printf("> ");
+        fflush(stdout);
+    }
+    
+    printf("消息接收线程结束\n");
+    return 0;
+}
